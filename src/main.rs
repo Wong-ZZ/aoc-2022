@@ -1,9 +1,9 @@
 mod parser;
 
-mod day14part1;
-mod day14part2;
+mod day15part1;
+mod day15part2;
 
 fn main() {
-    day14part1::main();
-    day14part2::main();
+    day15part1::main();
+    day15part2::main();
 }
