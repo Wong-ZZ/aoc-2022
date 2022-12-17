@@ -3,6 +3,20 @@ use std::collections::{HashSet};
 use crate::parser::read_file;
 
 pub fn main() {
+    // there is a repeating pattern starting at i == 1747 where height = 2773
+    // every 1745 iterations after this, height increases by 2752
+    // to find height at iteration n,
+    // step 1: let x = 2773 + ((n-1747) / 1745) * 2752
+    // step 2: let foo = (n-1747) % 1745
+    // step 3: let y = (height at iteration (foo + 1747)) - 2773
+    // answer = x + y
+    // for n = 1000000000000, x = 1577077362325, foo = 1008, y = 4363 - 2773
+    let n: i64 = 1000000000000;
+    let result = ((n-1747) / 1745) * 2752i64 + solve(1747 + (n-1747) % 1745);
+    println!("{result}");
+}
+
+fn solve(n: i64) -> i64 {
     let jet = read_file(17, 1)
         .next()
         .unwrap()
@@ -20,19 +34,7 @@ pub fn main() {
     let mut filled_pos = HashSet::new();
     let mut max_y = 0;
     let mut jet_i = 0;
-    println!("{}", jet.len());
-    // there is a repeating pattern starting at i == 1747 where height = 2773
-    // every 1745 iterations after this, height increases by 2752
-    // to find height at iteration n,
-    // step 1: let x = 2773 + ((n-1747) // 1745) * 2752
-    // step 2: let foo = (n-1747) % 1745
-    // step 3: let y = (height at iteration (foo + 1747)) - 2773
-    // answer = x + y
-    // for n = 1000000000000, x = 1577077362325, foo = 1008, y = 4363 - 2773
-    for i in 0..1747+1008 {
-        if jet_i == 0  {
-            println!("{i}")
-        }
+    for i in 0..n {
         let shape = match i % 5 {
             0 => vec![(0,0), (1, 0), (2, 0), (3, 0)],
             1 => vec![(1, 0), (0, 1), (1, 1), (2, 1), (1, 2)],
@@ -72,5 +74,5 @@ pub fn main() {
             }
         }
     }
-    println!("{max_y}");
+    return max_y;
 }
