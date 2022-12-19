@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use crate::parser::read_file;
 
 pub fn main() {
-    read_file(19, 0)
+    let mut result = 0;
+    read_file(19, 1)
         .for_each(|l| {
             let line = l.unwrap();
             let mut line = line.split(": ").map(String::from);
@@ -24,21 +27,13 @@ pub fn main() {
                     costs[robot_type] = cost;
                 });
             println!("{:?}", costs);
-            let clay_to_ore_ratio = match costs[2].get(1).unwrap().0 % costs[2].get(0).unwrap().0 {
-                0 => costs[2].get(1).unwrap().0 /  costs[2].get(0).unwrap().0,
-                _ => costs[2].get(1).unwrap().0 / costs[2].get(0).unwrap().0 + 1
-            };
-            let ore = costs[2].get(0).unwrap().0 + costs[3].get(0).unwrap().0;
-            let obsidian = costs[3].get(1).unwrap().0;
-            let obsidian_to_ore_ratio = match obsidian % ore {
-                0 => obsidian / ore,
-                _ => obsidian / ore + 1
-            };
-            println!("{},{}", clay_to_ore_ratio, obsidian_to_ore_ratio);
-            // let mut memo = std::collections::HashMap::<(i32, i32, i32, i32), i32>::new();
-            let result = simulate(&mut [0, 0, 0, 0], &mut [1, 0, 0, 0], &costs, 0, clay_to_ore_ratio, obsidian_to_ore_ratio);
-            println!("{id}:{result}");
+            let mut memo = HashMap::<((i32, i32, i32, i32), (i32, i32, i32, i32)), (usize, (i32, i32, i32, i32))>::new();
+            let temp = simulate((0, 0, 0, 0), &mut [0, 0, 0, 0], &mut [1, 0, 0, 0], &costs, 0, &mut memo);
+            println!("{}", memo.len());
+            println!("{id}:{:?}", temp);
+            result += id * temp.0;
         });
+    println!("{result}")
 }
 
 fn get_resource_idx(resource: &String) -> usize {
@@ -51,29 +46,45 @@ fn get_resource_idx(resource: &String) -> usize {
     }
 }
 
-fn simulate(resources: &mut [i32;4], robots: &mut [i32;4], costs: &[Vec<(i32, usize)>; 4], time: usize, clay_to_ore_ratio: i32, obsidian_to_ore_ratio: i32) -> i32 {
+fn simulate(before_state: (i32, i32, i32, i32), resources: &mut [i32;4], robots: &mut [i32;4], costs: &[Vec<(i32, usize)>; 4], time: usize, memo: &mut HashMap::<((i32, i32, i32, i32), (i32, i32, i32, i32)), (usize, (i32, i32, i32, i32))>) -> (i32, (i32, i32, i32, i32)) {
+    let current_state = (robots[0], robots[1], robots[2], robots[3]);
     if time >= 24 {
-        return resources[3];
+        // if resources[3] == 0 {
+        //     println!("{time}: {:?}, {:?},{:?}, {}", resources, before_state, robots, memo.contains_key(&(before_state, current_state)))
+        // }
+        // if memo.contains_key(&(before_state, current_state)) {
+        //     memo.insert((before_state, current_state), (time, resources[3]));
+        // }
+        // }
+        return (resources[3], (robots[0], robots[1], robots[2], robots[3]));
     }
 
-    (0..4).for_each(|i| resources[i] += robots[i]);
-    let mut result = simulate(resources, robots, costs, time+1, clay_to_ore_ratio, obsidian_to_ore_ratio);
-    (0..4).for_each(|i| resources[i] -= robots[i]);
-    for i in (0..4).rev() {
-        if (i == 0 && robots[i] == 2) || (i == 1 && robots[i] / robots[0] == clay_to_ore_ratio) || (i == 2 && robots[i] / robots[0] == obsidian_to_ore_ratio) {
-            continue
+    if current_state != before_state && memo.contains_key(&(before_state, current_state))  {
+        if memo.get(&(before_state, current_state)).unwrap().0 < time || (memo.get(&(before_state, current_state)).unwrap().0 == time && memo.get(&(before_state, current_state)).unwrap().1 >= (resources[3], resources[2], resources[1], resources[0])) {
+            return (0, (0, 0, 0, 0));
         }
+    }
+
+    let mut result = (0, (0, 0, 0, 0));
+    if current_state != before_state {
+        memo.insert((before_state, current_state), (time, (resources[3], resources[2], resources[1], resources[0])));
+    }
+    for i in 0..4 {
         let can_build = costs[i].iter().all(|(amt, resource_idx)| resources[*resource_idx] >= *amt);
         if can_build {
             costs[i].iter().for_each(|(amt, resource_idx)| resources[*resource_idx] -= amt);
             (0..4).for_each(|j| resources[j] += robots[j]);
             robots[i] += 1;
-            result = std::cmp::max(result, simulate(resources, robots, costs, time+1, clay_to_ore_ratio, obsidian_to_ore_ratio));
+            result = std::cmp::max(result, simulate(current_state, resources, robots, costs, time+1, memo));
             robots[i] -= 1;
             (0..4).for_each(|j| resources[j] -= robots[j]);
             costs[i].iter().for_each(|(amt, resource_idx)| resources[*resource_idx] += amt);
         }
     }
+
+    (0..4).for_each(|i| resources[i] += robots[i]);
+    result = std::cmp::max(result, simulate(current_state, resources, robots, costs, time+1, memo));
+    (0..4).for_each(|i| resources[i] -= robots[i]);
 
     return result;
 }
